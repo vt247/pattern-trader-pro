@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PatternTrader Pro - Live Trading</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            background: #4ade80;
+            border-radius: 20px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .stat-card h3 {
+            color: #666;
+            font-size: 0.85em;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        .stat-card .value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #333;
+        }
+        .positive { color: #4ade80; }
+        .negative { color: #f87171; }
+        .neutral { color: #fbbf24; }
+
+        .signals-section {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .signals-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        .signal-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+        .signal-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .signal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .signal-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+        .signal-badge {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        .badge-open { background: #fef3c7; color: #92400e; }
+        .badge-target { background: #d1fae5; color: #065f46; }
+        .badge-stop { background: #fee2e2; color: #991b1b; }
+        .badge-timeout { background: #e5e7eb; color: #374151; }
+
+        .signal-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .detail-item {
+            font-size: 0.9em;
+        }
+        .detail-label {
+            color: #666;
+            font-size: 0.85em;
+            margin-bottom: 3px;
+        }
+        .detail-value {
+            font-weight: bold;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .chart-container {
+            margin-top: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .chart-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .no-signals {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .no-signals p {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 1.2em;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>PatternTrader Pro</h1>
+            <span class="status-badge">● LIVE SCANNING</span>
+        </div>
+
+        <div class="stats-grid" id="stats">
+            <div class="stat-card">
+                <h3>Account Balance</h3>
+                <div class="value" id="balance">$1,000</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total P&L</h3>
+                <div class="value" id="pnl">$0.00</div>
+            </div>
+            <div class="stat-card">
+                <h3>Open Positions</h3>
+                <div class="value neutral" id="open">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Win Rate</h3>
+                <div class="value" id="winrate">0%</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Signals</h3>
+                <div class="value" id="total">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total R</h3>
+                <div class="value" id="totalr">0.00R</div>
+            </div>
+        </div>
+
+        <div class="signals-section">
+            <h2>Trade Signals</h2>
+            <div id="signals" class="loading">
+                Loading signals...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function formatMoney(value) {
+            return '$' + value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+
+        function formatPercent(value) {
+            return value >= 0 ? '+' + value.toFixed(2) + '%' : value.toFixed(2) + '%';
+        }
+
+        function formatR(value) {
+            return value >= 0 ? '+' + value.toFixed(2) + 'R' : value.toFixed(2) + 'R';
+        }
+
+        function formatDate(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'open': '<span class="signal-badge badge-open">OPEN</span>',
+                'hit_target': '<span class="signal-badge badge-target">✓ TARGET HIT</span>',
+                'hit_stop': '<span class="signal-badge badge-stop">✗ STOP HIT</span>',
+                'timeout': '<span class="signal-badge badge-timeout">⏱ TIMEOUT</span>'
+            };
+            return badges[status] || status;
+        }
+
+        function renderSignal(signal) {
+            const pnlClass = signal.pnl_r > 0 ? 'positive' : (signal.pnl_r < 0 ? 'negative' : '');
+
+            return `
+                <div class="signal-card">
+                    <div class="signal-header">
+                        <div class="signal-title">
+                            ${signal.pattern_type} - ${signal.market} (${signal.timeframe})
+                        </div>
+                        ${getStatusBadge(signal.status)}
+                    </div>
+
+                    <div class="signal-details">
+                        <div class="detail-item">
+                            <div class="detail-label">Entry</div>
+                            <div class="detail-value">${formatMoney(signal.entry)}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Stop</div>
+                            <div class="detail-value">${formatMoney(signal.stop)}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Target</div>
+                            <div class="detail-value">${formatMoney(signal.target)}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Risk:Reward</div>
+                            <div class="detail-value">1:${signal.risk_reward.toFixed(1)}</div>
+                        </div>
+                        ${signal.status !== 'open' ? `
+                        <div class="detail-item">
+                            <div class="detail-label">P&L</div>
+                            <div class="detail-value ${pnlClass}">${formatR(signal.pnl_r)}</div>
+                        </div>
+                        ` : ''}
+                        <div class="detail-item">
+                            <div class="detail-label">Signal Time</div>
+                            <div class="detail-value" style="font-size: 0.9em;">${formatDate(signal.timestamp)}</div>
+                        </div>
+                    </div>
+
+                    ${signal.chart_path ? `
+                    <div class="chart-container">
+                        <img src="/${signal.chart_path}" alt="Setup Chart">
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function updateDashboard() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    // Update stats
+                    document.getElementById('balance').textContent = formatMoney(data.account.balance);
+                    document.getElementById('balance').className = 'value ' +
+                        (data.account.total_pnl >= 0 ? 'positive' : 'negative');
+
+                    document.getElementById('pnl').textContent = formatPercent(data.account.total_pnl_pct);
+                    document.getElementById('pnl').className = 'value ' +
+                        (data.account.total_pnl >= 0 ? 'positive' : 'negative');
+
+                    document.getElementById('open').textContent = data.stats.open_positions;
+                    document.getElementById('total').textContent = data.stats.total_signals;
+
+                    document.getElementById('winrate').textContent = data.stats.win_rate.toFixed(1) + '%';
+                    document.getElementById('winrate').className = 'value ' +
+                        (data.stats.win_rate >= 50 ? 'positive' : (data.stats.win_rate >= 35 ? 'neutral' : 'negative'));
+
+                    document.getElementById('totalr').textContent = formatR(data.stats.total_r);
+                    document.getElementById('totalr').className = 'value ' +
+                        (data.stats.total_r >= 0 ? 'positive' : 'negative');
+
+                    // Update signals
+                    const signalsDiv = document.getElementById('signals');
+                    if (data.signals && data.signals.length > 0) {
+                        signalsDiv.innerHTML = data.signals.map(renderSignal).join('');
+                    } else {
+                        signalsDiv.innerHTML = `
+                            <div class="no-signals">
+                                <p>No trade signals yet</p>
+                                <p style="font-size: 0.9em; color: #999;">
+                                    Bot scans markets hourly for setups
+                                </p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    document.getElementById('signals').innerHTML = `
+                        <div class="no-signals">
+                            <p>Error loading signals</p>
+                        </div>
+                    `;
+                });
+        }
+
+        // Update every 10 seconds
+        updateDashboard();
+        setInterval(updateDashboard, 10000);
+    </script>
+</body>
+</html>
