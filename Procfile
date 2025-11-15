@@ -1,2 +1,1 @@
-web: gunicorn web_dashboard_live:app --bind 0.0.0.0:$PORT --timeout 120
-worker: python auto_scanner_bot.py
+web: gunicorn web_dashboard_unified:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1 --threads 4

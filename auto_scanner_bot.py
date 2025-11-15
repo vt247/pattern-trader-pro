@@ -42,15 +42,15 @@ class TradeSignal:
 class AutoScannerBot:
     """Automatic scanner that finds and trades setups"""
 
-    def __init__(self):
+    def __init__(self, initial_balance: float = 1000.0):
         self.markets = {
             'BTC-USD': 'Bitcoin',
             'SPY': 'S&P 500',
             'GLD': 'Gold'
         }
         self.timeframes = ['1d', '1h']
-        self.account_balance = 1000.0
-        self.initial_balance = 1000.0
+        self.account_balance = initial_balance
+        self.initial_balance = initial_balance
         self.risk_per_trade = 0.02  # 2% per trade
         self.max_positions = 10
 
@@ -89,10 +89,16 @@ class AutoScannerBot:
             try:
                 with open(self.account_file, 'r') as f:
                     data = json.load(f)
-                    self.account_balance = data.get('balance', 1000.0)
-                    self.initial_balance = data.get('initial_balance', 1000.0)
+                    self.account_balance = data.get('balance', self.initial_balance)
+                    # Don't override initial_balance if already set
+                    if 'initial_balance' not in data:
+                        self.save_account_state()
             except:
-                pass
+                # Save initial state if loading fails
+                self.save_account_state()
+        else:
+            # Create initial account state
+            self.save_account_state()
 
     def save_account_state(self):
         """Save account state"""
