@@ -1,0 +1,9 @@
+Date,Pattern,Timeframe,Direction,Entry,Stop,Target,Correction_Pct,Risk_Reward,EMA_Aligned,MACD_Aligned,Valid
+2024-04-23 00:00:00-04:00,ICI,daily,SHORT,496.45,497.96,479.01,0.557,11.55,True,True,True
+2024-11-19 00:00:00-05:00,ICI,daily,SHORT,583.21,584.75,572.46,0.44,6.99,False,False,False
+2025-03-27 00:00:00-04:00,ICI,daily,LONG,563.85,560.8,578.09,0.624,4.68,False,False,False
+2025-05-09 00:00:00-04:00,ICI,daily,LONG,561.12,557.88,568.48,0.541,2.27,True,True,True
+2025-06-05 00:00:00-04:00,ICI,daily,LONG,589.67,586.99,597.42,0.436,2.9,True,False,False
+2025-07-08 00:00:00-04:00,ICI,daily,LONG,618.62,615.27,629.41,0.47,3.21,True,True,True
+2025-10-30 00:00:00-04:00,ICI,daily,LONG,679.83,678.77,694.65,0.43,14.04,True,True,True
+2025-11-13 00:00:00-05:00,ICI,daily,LONG,672.04,669.4,689.65,0.584,6.68,True,False,False
