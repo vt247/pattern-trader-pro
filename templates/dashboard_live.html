@@ -453,12 +453,13 @@
                             `<img src="/${signal.chart_path}" alt="Setup Chart">`
                         }
                     </div>
+                    ` : ''}
+
                     ${signal.trade_rationale ? `
                     <div style="margin-top: 15px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px; border-left: 4px solid #667eea;">
                         <div style="font-weight: bold; margin-bottom: 8px; color: white;">📊 Trade Rationale:</div>
                         <div style="color: rgba(255,255,255,0.9); line-height: 1.6;">${signal.trade_rationale}</div>
                     </div>
-                    ` : ''}
                     ` : ''}
                 </div>
             `;
