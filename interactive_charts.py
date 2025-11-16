@@ -57,6 +57,53 @@ def calculate_trend(df, period=20):
     return trend, trend_color, df
 
 
+def generate_trade_rationale(pattern_type, is_long, trend, support_levels,
+                             resistance_levels, current_price, entry, stop, target):
+    """Generate human-readable trade rationale"""
+
+    # Pattern-specific rationales
+    pattern_reasons = {
+        'ICI': f"Institutional Candle with Imbalance detected. Large candle shows institutional activity, "
+               f"followed by price imbalance creating entry opportunity.",
+        'Momentum': f"Strong momentum pattern identified. Price showing clear directional movement "
+                    f"with potential for continuation after retracement.",
+        'Force': f"Force pattern detected. Stop hunt followed by sharp reversal indicates institutional "
+                 f"accumulation/distribution and potential trend change.",
+        'Revival': f"Revival setup found. Price breaking out of consolidation with increased volume, "
+                   f"suggesting new trend beginning."
+    }
+
+    base_reason = pattern_reasons.get(pattern_type, f"{pattern_type} pattern identified")
+
+    # Add trend context
+    if is_long and trend == 'Uptrend':
+        trend_context = "Trade aligns with uptrend (price above MA20 and MA50)"
+    elif not is_long and trend == 'Downtrend':
+        trend_context = "Trade aligns with downtrend (price below MA20 and MA50)"
+    elif trend == 'Sideways':
+        trend_context = "Range-bound market - trading breakout from consolidation"
+    else:
+        trend_context = "Counter-trend trade - expecting reversal"
+
+    # Add support/resistance context
+    sr_context = ""
+    if is_long and support_levels:
+        closest_support = min(support_levels, key=lambda x: abs(x - entry))
+        if abs(closest_support - entry) / entry < 0.02:  # Within 2%
+            sr_context = f"Entry near support level at ${closest_support:.2f}"
+    elif not is_long and resistance_levels:
+        closest_resistance = min(resistance_levels, key=lambda x: abs(x - entry))
+        if abs(closest_resistance - entry) / entry < 0.02:  # Within 2%
+            sr_context = f"Entry near resistance level at ${closest_resistance:.2f}"
+
+    # Combine all context
+    rationale_parts = [base_reason, trend_context]
+    if sr_context:
+        rationale_parts.append(sr_context)
+
+    return ". ".join(rationale_parts) + "."
+
+
 def draw_interactive_chart(symbol: str, timeframe: str, setup: dict,
                           pattern_type: str, charts_dir: str = 'static/charts') -> str:
     """
@@ -79,7 +126,8 @@ def draw_interactive_chart(symbol: str, timeframe: str, setup: dict,
         current_price = df['Close'].iloc[-1]
 
         # Override dummy prices with realistic ones based on current price
-        if setup.get('entry', 0) == 0 or abs(setup.get('entry', 0) - current_price) / current_price > 0.5:
+        # Check if prices are dummy or unrealistic (>10% away from current)
+        if setup.get('entry', 0) == 0 or abs(setup.get('entry', 0) - current_price) / current_price > 0.1:
             # If entry is dummy or too far from current price, recalculate
             is_long = setup.get('entry', current_price) < setup.get('target', current_price * 1.1)
 
@@ -310,7 +358,7 @@ def draw_interactive_chart(symbol: str, timeframe: str, setup: dict,
             row=2, col=1
         )
 
-        # Add pattern info annotation
+        # Add pattern info annotation with better colors
         is_long = target > entry
         direction = "LONG ↗" if is_long else "SHORT ↘"
         risk = abs(entry - stop)
@@ -335,12 +383,39 @@ def draw_interactive_chart(symbol: str, timeframe: str, setup: dict,
             yref="paper",
             text=info_text,
             showarrow=False,
-            bgcolor=f"rgba(255, 255, 255, 0.8)",
+            bgcolor="rgba(30, 30, 30, 0.9)",  # Dark background
             bordercolor=trend_color,
             borderwidth=2,
-            font=dict(size=11),
+            font=dict(size=11, color="white"),  # White text
             align="left",
             xanchor="left",
+            yanchor="top"
+        )
+
+        # Generate trade rationale based on pattern and indicators
+        rationale = generate_trade_rationale(
+            pattern_type,
+            is_long,
+            trend,
+            support_levels,
+            resistance_levels,
+            current_price,
+            entry,
+            stop,
+            target
+        )
+
+        # Add trade rationale as subtitle annotation below chart
+        fig.add_annotation(
+            x=0.5,
+            y=-0.15,
+            xref="paper",
+            yref="paper",
+            text=f"<b>Trade Rationale:</b> {rationale}",
+            showarrow=False,
+            font=dict(size=12, color="white"),
+            align="center",
+            xanchor="center",
             yanchor="top"
         )
 
@@ -363,7 +438,7 @@ def draw_interactive_chart(symbol: str, timeframe: str, setup: dict,
                 xanchor="right",
                 x=1
             ),
-            margin=dict(l=50, r=150, t=80, b=50),
+            margin=dict(l=50, r=150, t=80, b=100),  # Extra bottom margin for rationale
             dragmode='pan',  # Enable pan by default
             modebar=dict(
                 bgcolor='rgba(0,0,0,0)',

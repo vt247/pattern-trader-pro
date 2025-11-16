@@ -113,6 +113,18 @@ def trigger_scan():
 
     return jsonify({'message': 'Scan started', 'scanning': True})
 
+@app.route('/api/analyze', methods=['POST'])
+def analyze_trades():
+    """Run AI analysis on all trades"""
+    try:
+        from trade_analyzer import analyze_trades, load_trades, save_analysis
+        trades = load_trades()
+        analysis = analyze_trades(trades)
+        save_analysis(analysis)
+        return jsonify(analysis)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/charts/<path:filename>')
 def serve_chart(filename):
     """Serve chart images"""

@@ -208,6 +208,68 @@
             font-size: 1.2em;
         }
 
+        /* Analysis Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.7);
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            color: white;
+        }
+
+        .modal-close {
+            color: white;
+            float: right;
+            font-size: 35px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            opacity: 0.7;
+        }
+
+        .analysis-section {
+            margin: 20px 0;
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .analysis-section h3 {
+            margin-top: 0;
+            font-size: 1.3em;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            padding-bottom: 10px;
+        }
+
+        .insight-item, .suggestion-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 5px;
+            font-size: 1em;
+            line-height: 1.6;
+        }
+
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 1.8em;
@@ -225,6 +287,7 @@
             <div class="header-actions">
                 <span class="status-badge" id="statusBadge">● LIVE SCANNING</span>
                 <button class="scan-button" id="scanButton" onclick="runScan()">🔍 Scan Now</button>
+                <button class="scan-button" id="analyzeButton" onclick="analyzeTrades()">🤖 AI Analysis</button>
                 <span class="scan-info" id="scanInfo"></span>
             </div>
         </div>
@@ -261,6 +324,15 @@
             <div id="signals" class="loading">
                 Loading signals...
             </div>
+        </div>
+    </div>
+
+    <!-- Analysis Modal -->
+    <div id="analysisModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeAnalysisModal()">&times;</span>
+            <h2>🤖 AI Trade Analysis</h2>
+            <div id="analysisContent"></div>
         </div>
     </div>
 
@@ -448,6 +520,86 @@
                         </div>
                     `;
                 });
+        }
+
+        function analyzeTrades() {
+            const button = document.getElementById('analyzeButton');
+            const scanInfo = document.getElementById('scanInfo');
+
+            button.disabled = true;
+            button.textContent = '⏳ Analyzing...';
+
+            fetch('/api/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                button.disabled = false;
+                button.textContent = '🤖 AI Analysis';
+
+                if (data.status === 'no_data' || data.status === 'no_closed') {
+                    scanInfo.textContent = data.message;
+                    setTimeout(() => {
+                        scanInfo.textContent = '';
+                    }, 5000);
+                    return;
+                }
+
+                // Display analysis in modal
+                displayAnalysis(data);
+            })
+            .catch(error => {
+                console.error('Analysis error:', error);
+                button.disabled = false;
+                button.textContent = '🤖 AI Analysis';
+                scanInfo.textContent = 'Analysis failed!';
+                setTimeout(() => {
+                    scanInfo.textContent = '';
+                }, 3000);
+            });
+        }
+
+        function displayAnalysis(data) {
+            const content = document.getElementById('analysisContent');
+
+            let html = `
+                <div class="analysis-section">
+                    <h3>📊 Performance Summary</h3>
+                    <p><strong>Total Trades:</strong> ${data.total_trades}</p>
+                    <p><strong>Wins:</strong> ${data.wins} | <strong>Losses:</strong> ${data.losses} | <strong>Breakeven:</strong> ${data.breakeven}</p>
+                    <p><strong>Win Rate:</strong> ${data.win_rate.toFixed(1)}%</p>
+                    <p><strong>Total R:</strong> ${data.total_r >= 0 ? '+' : ''}${data.total_r.toFixed(2)}R</p>
+                    <p><strong>Avg Win:</strong> +${data.avg_win.toFixed(2)}R | <strong>Avg Loss:</strong> ${data.avg_loss.toFixed(2)}R</p>
+                </div>
+
+                <div class="analysis-section">
+                    <h3>💡 Key Insights</h3>
+                    ${data.insights.map(insight => `<div class="insight-item">${insight}</div>`).join('')}
+                </div>
+
+                <div class="analysis-section">
+                    <h3>🎯 Improvement Suggestions</h3>
+                    ${data.suggestions.map((suggestion, i) => `<div class="suggestion-item">${i + 1}. ${suggestion}</div>`).join('')}
+                </div>
+            `;
+
+            content.innerHTML = html;
+            document.getElementById('analysisModal').style.display = 'block';
+        }
+
+        function closeAnalysisModal() {
+            document.getElementById('analysisModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('analysisModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
         }
 
         // Update every 10 seconds
