@@ -158,29 +158,78 @@ def draw_interactive_chart(symbol: str, timeframe: str, setup: dict,
         is_long = target > entry
 
         # Add TradingView-style position area (shaded regions)
+        # Start from current candle (last index) and extend to the right
+        current_time = df.index[-1]
+
+        # Calculate future time extension (20% of chart width to the right)
+        from datetime import timedelta
+        time_range = df.index[-1] - df.index[0]
+
+        # Convert to timedelta for proper addition
+        if hasattr(time_range, 'days'):
+            # Already a timedelta
+            future_time = current_time + (time_range * 0.2)
+        else:
+            # Convert to days and create timedelta
+            days = (df.index[-1] - df.index[0]).days
+            future_time = current_time + timedelta(days=int(days * 0.2))
+
         # Risk zone (Entry to Stop) - Red/transparent
+        # Only show from current candle forward
         fig.add_shape(
             type="rect",
-            x0=df.index[0],
-            x1=df.index[-1],
+            x0=current_time,
+            x1=future_time,
             y0=min(entry, stop),
             y1=max(entry, stop),
-            fillcolor="rgba(255, 0, 0, 0.15)",
+            fillcolor="rgba(255, 0, 0, 0.2)",
             line=dict(width=0),
             layer="below",
             row=1, col=1
         )
 
         # Reward zone (Entry to Target) - Green/transparent
+        # Only show from current candle forward
         fig.add_shape(
             type="rect",
-            x0=df.index[0],
-            x1=df.index[-1],
+            x0=current_time,
+            x1=future_time,
             y0=min(entry, target),
             y1=max(entry, target),
-            fillcolor="rgba(0, 255, 0, 0.15)",
+            fillcolor="rgba(0, 255, 0, 0.2)",
             line=dict(width=0),
             layer="below",
+            row=1, col=1
+        )
+
+        # Add vertical line at trade start (current candle) using add_shape
+        # Get y-axis range for the line
+        y_min = df['Low'].min()
+        y_max = df['High'].max()
+
+        fig.add_shape(
+            type="line",
+            x0=current_time,
+            x1=current_time,
+            y0=y_min,
+            y1=y_max,
+            line=dict(
+                color="rgba(255, 255, 255, 0.5)",
+                width=2,
+                dash="dot"
+            ),
+            row=1, col=1
+        )
+
+        # Add annotation for trade start
+        fig.add_annotation(
+            x=current_time,
+            y=y_max,
+            text="Trade Start",
+            showarrow=False,
+            font=dict(size=10, color="white"),
+            xshift=5,
+            yshift=10,
             row=1, col=1
         )
 
