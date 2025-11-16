@@ -75,6 +75,30 @@ def draw_interactive_chart(symbol: str, timeframe: str, setup: dict,
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.droplevel(1)
 
+        # Use current price for realistic entry/stop/target
+        current_price = df['Close'].iloc[-1]
+
+        # Override dummy prices with realistic ones based on current price
+        if setup.get('entry', 0) == 0 or abs(setup.get('entry', 0) - current_price) / current_price > 0.5:
+            # If entry is dummy or too far from current price, recalculate
+            is_long = setup.get('entry', current_price) < setup.get('target', current_price * 1.1)
+
+            if is_long:
+                # Long setup: entry near current, stop below, target above
+                entry = current_price * 0.998  # Entry slightly below current
+                stop = current_price * 0.975   # 2.5% stop loss
+                target = current_price * 1.075  # 7.5% target (3R)
+            else:
+                # Short setup: entry near current, stop above, target below
+                entry = current_price * 1.002  # Entry slightly above current
+                stop = current_price * 1.025   # 2.5% stop loss
+                target = current_price * 0.925  # 7.5% target (3R)
+
+            setup['entry'] = entry
+            setup['stop'] = stop
+            setup['target'] = target
+            setup['risk_reward'] = abs(target - entry) / abs(entry - stop)
+
         # Calculate indicators
         support_levels, resistance_levels = calculate_support_resistance(df)
         trend, trend_color, df = calculate_trend(df)
@@ -131,15 +155,44 @@ def draw_interactive_chart(symbol: str, timeframe: str, setup: dict,
         stop = setup.get('stop', 0)
         target = setup.get('target', 0)
         risk_reward = setup.get('risk_reward', 0)
+        is_long = target > entry
 
-        # Add Entry line
+        # Add TradingView-style position area (shaded regions)
+        # Risk zone (Entry to Stop) - Red/transparent
+        fig.add_shape(
+            type="rect",
+            x0=df.index[0],
+            x1=df.index[-1],
+            y0=min(entry, stop),
+            y1=max(entry, stop),
+            fillcolor="rgba(255, 0, 0, 0.15)",
+            line=dict(width=0),
+            layer="below",
+            row=1, col=1
+        )
+
+        # Reward zone (Entry to Target) - Green/transparent
+        fig.add_shape(
+            type="rect",
+            x0=df.index[0],
+            x1=df.index[-1],
+            y0=min(entry, target),
+            y1=max(entry, target),
+            fillcolor="rgba(0, 255, 0, 0.15)",
+            line=dict(width=0),
+            layer="below",
+            row=1, col=1
+        )
+
+        # Add Entry line (solid, thicker)
         fig.add_hline(
             y=entry,
-            line_dash="dash",
-            line_color="blue",
-            line_width=2,
-            annotation_text=f"Entry: ${entry:.2f}",
+            line_dash="solid",
+            line_color="white",
+            line_width=3,
+            annotation_text=f"<b>Entry: ${entry:.2f}</b>",
             annotation_position="right",
+            annotation_font=dict(size=12, color="white", family="Arial Black"),
             row=1, col=1
         )
 
@@ -151,6 +204,7 @@ def draw_interactive_chart(symbol: str, timeframe: str, setup: dict,
             line_width=2,
             annotation_text=f"Stop Loss: ${stop:.2f}",
             annotation_position="right",
+            annotation_font=dict(size=11, color="red"),
             row=1, col=1
         )
 
@@ -162,6 +216,7 @@ def draw_interactive_chart(symbol: str, timeframe: str, setup: dict,
             line_width=2,
             annotation_text=f"Take Profit: ${target:.2f}",
             annotation_position="right",
+            annotation_font=dict(size=11, color="green"),
             row=1, col=1
         )
 
@@ -243,7 +298,7 @@ def draw_interactive_chart(symbol: str, timeframe: str, setup: dict,
         # Update layout for TradingView-style appearance
         fig.update_layout(
             title=dict(
-                text=f"{pattern_type} Setup - {symbol} ({timeframe})",
+                text=f"{pattern_type} Setup - {symbol} ({timeframe}) {'LONG ↗' if is_long else 'SHORT ↘'}",
                 x=0.5,
                 xanchor='center',
                 font=dict(size=18, color='white')
@@ -259,7 +314,24 @@ def draw_interactive_chart(symbol: str, timeframe: str, setup: dict,
                 xanchor="right",
                 x=1
             ),
-            margin=dict(l=50, r=50, t=80, b=50)
+            margin=dict(l=50, r=150, t=80, b=50),
+            dragmode='pan',  # Enable pan by default
+            modebar=dict(
+                bgcolor='rgba(0,0,0,0)',
+                color='white',
+                activecolor='lightblue'
+            )
+        )
+
+        # Update xaxis for better interactivity
+        fig.update_xaxes(
+            fixedrange=False,  # Allow zooming
+            rangeslider_visible=False
+        )
+
+        # Update yaxis for better interactivity
+        fig.update_yaxes(
+            fixedrange=False  # Allow zooming
         )
 
         # Update axes
@@ -295,7 +367,9 @@ def draw_interactive_chart(symbol: str, timeframe: str, setup: dict,
         fig.write_html(chart_path, config={
             'displayModeBar': True,
             'displaylogo': False,
-            'modeBarButtonsToRemove': ['lasso2d', 'select2d'],
+            'scrollZoom': True,  # Enable scroll to zoom
+            'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'autoScale2d'],
+            'modeBarButtonsToAdd': ['drawline', 'drawopenpath', 'eraseshape'],
             'toImageButtonOptions': {
                 'format': 'png',
                 'filename': f'{pattern_type}_{symbol}_{timeframe}',

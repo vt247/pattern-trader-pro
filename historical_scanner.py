@@ -106,7 +106,7 @@ def create_dummy_signals(bot):
         )
     ]
 
-    # Draw interactive charts for dummy signals
+    # Draw interactive charts for dummy signals and update with realistic prices
     for signal in dummy_signals:
         setup = {
             'entry': signal.entry,
@@ -117,6 +117,12 @@ def create_dummy_signals(bot):
         chart_path = draw_interactive_chart(signal.market, signal.timeframe,
                                             setup, signal.pattern_type,
                                             bot.charts_dir)
+
+        # Update signal with realistic prices from chart
+        signal.entry = setup['entry']
+        signal.stop = setup['stop']
+        signal.target = setup['target']
+        signal.risk_reward = setup['risk_reward']
         signal.chart_path = chart_path
 
     # Save to file
