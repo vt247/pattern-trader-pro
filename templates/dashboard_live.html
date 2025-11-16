@@ -119,6 +119,7 @@
             font-size: 1.5em;
         }
         .signal-card {
+            background: white;
             border: 1px solid #e5e7eb;
             border-radius: 8px;
             padding: 20px;
@@ -456,9 +457,9 @@
                     ` : ''}
 
                     ${signal.trade_rationale ? `
-                    <div style="margin-top: 15px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px; border-left: 4px solid #667eea;">
-                        <div style="font-weight: bold; margin-bottom: 8px; color: white;">📊 Trade Rationale:</div>
-                        <div style="color: rgba(255,255,255,0.9); line-height: 1.6;">${signal.trade_rationale}</div>
+                    <div style="margin-top: 15px; padding: 15px; background: rgba(102,126,234,0.05); border-radius: 8px; border-left: 4px solid #667eea;">
+                        <div style="font-weight: bold; margin-bottom: 8px; color: #667eea;">📊 Trade Rationale:</div>
+                        <div style="color: #333; line-height: 1.6;">${signal.trade_rationale}</div>
                     </div>
                     ` : ''}
                 </div>
