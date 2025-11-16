@@ -177,6 +177,13 @@
             margin-top: 15px;
             border-radius: 8px;
             overflow: hidden;
+            background: #1a1a1a;
+        }
+        .chart-container iframe {
+            width: 100%;
+            height: 800px;
+            border: none;
+            display: block;
         }
         .chart-container img {
             width: 100%;
@@ -369,7 +376,10 @@
 
                     ${signal.chart_path ? `
                     <div class="chart-container">
-                        <img src="/${signal.chart_path}" alt="Setup Chart">
+                        ${signal.chart_path.endsWith('.html') ?
+                            `<iframe src="/${signal.chart_path}" scrolling="no"></iframe>` :
+                            `<img src="/${signal.chart_path}" alt="Setup Chart">`
+                        }
                     </div>
                     ` : ''}
                 </div>

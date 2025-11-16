@@ -22,6 +22,9 @@ from ici_scanner import ICIScanner
 from pattern_scanners import MomentumScanner, WMScanner, HarmonicScanner
 from fous_scanners import ForceScanner, SurvivalScanner, RevivalScanner, GoldScanner
 
+# Import interactive charts
+from interactive_charts import draw_interactive_chart
+
 @dataclass
 class TradeSignal:
     """Trade signal with all details"""
@@ -269,9 +272,10 @@ class AutoScannerBot:
                 setups = self.scan_market(symbol, timeframe)
 
                 for setup in setups:
-                    # Draw chart
-                    chart_path = self.draw_setup_chart(symbol, timeframe, setup,
-                                                       setup['pattern_type'])
+                    # Draw interactive chart (Plotly)
+                    chart_path = draw_interactive_chart(symbol, timeframe, setup,
+                                                        setup['pattern_type'],
+                                                        self.charts_dir)
 
                     # Create signal
                     signal = TradeSignal(

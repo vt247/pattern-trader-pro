@@ -10,6 +10,7 @@ from datetime import datetime
 import json
 from auto_scanner_bot import AutoScannerBot
 from dataclasses import asdict
+from interactive_charts import draw_interactive_chart
 
 def scan_for_test_patterns():
     """
@@ -105,15 +106,17 @@ def create_dummy_signals(bot):
         )
     ]
 
-    # Draw charts for dummy signals
+    # Draw interactive charts for dummy signals
     for signal in dummy_signals:
         setup = {
             'entry': signal.entry,
             'stop': signal.stop,
-            'target': signal.target
+            'target': signal.target,
+            'risk_reward': signal.risk_reward
         }
-        chart_path = bot.draw_setup_chart(signal.market, signal.timeframe,
-                                          setup, signal.pattern_type)
+        chart_path = draw_interactive_chart(signal.market, signal.timeframe,
+                                            setup, signal.pattern_type,
+                                            bot.charts_dir)
         signal.chart_path = chart_path
 
     # Save to file
