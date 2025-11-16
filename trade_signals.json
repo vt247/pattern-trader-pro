@@ -1,0 +1,47 @@
+[
+  {
+    "timestamp": "2025-11-16T11:30:42.750327",
+    "pattern_type": "ICI",
+    "market": "BTC-USD",
+    "timeframe": "1d",
+    "entry": 45000.0,
+    "stop": 44000.0,
+    "target": 48000.0,
+    "risk_reward": 3.0,
+    "chart_path": "charts/ICI_BTC-USD_1d_20251116_113043.png",
+    "status": "open",
+    "exit_price": 0.0,
+    "exit_date": "",
+    "pnl_r": 0.0
+  },
+  {
+    "timestamp": "2025-11-16T11:30:42.750330",
+    "pattern_type": "Momentum",
+    "market": "SPY",
+    "timeframe": "1h",
+    "entry": 450.0,
+    "stop": 448.0,
+    "target": 456.0,
+    "risk_reward": 3.0,
+    "chart_path": "charts/Momentum_SPY_1h_20251116_113043.png",
+    "status": "open",
+    "exit_price": 0.0,
+    "exit_date": "",
+    "pnl_r": 0.0
+  },
+  {
+    "timestamp": "2025-11-16T11:30:42.750332",
+    "pattern_type": "Force",
+    "market": "GLD",
+    "timeframe": "1d",
+    "entry": 185.0,
+    "stop": 183.0,
+    "target": 191.0,
+    "risk_reward": 3.0,
+    "chart_path": "charts/Force_GLD_1d_20251116_113044.png",
+    "status": "open",
+    "exit_price": 0.0,
+    "exit_date": "",
+    "pnl_r": 0.0
+  }
+]

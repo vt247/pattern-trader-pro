@@ -121,6 +121,10 @@ class AutoScannerBot:
             if df.empty:
                 return ''
 
+            # Handle MultiIndex columns from yfinance
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.droplevel(1)
+
             # Create figure
             fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10),
                                            gridspec_kw={'height_ratios': [3, 1]})
@@ -128,9 +132,9 @@ class AutoScannerBot:
             # Plot candlesticks
             colors = ['green' if c >= o else 'red'
                      for c, o in zip(df['Close'], df['Open'])]
-            ax1.bar(df.index, df['High'] - df['Low'], bottom=df['Low'],
+            ax1.bar(range(len(df)), df['High'] - df['Low'], bottom=df['Low'],
                    color=colors, alpha=0.3, width=0.6)
-            ax1.bar(df.index, df['Close'] - df['Open'], bottom=df['Open'],
+            ax1.bar(range(len(df)), df['Close'] - df['Open'], bottom=df['Open'],
                    color=colors, alpha=0.8, width=0.6)
 
             # Mark entry, stop, target
@@ -156,21 +160,23 @@ class AutoScannerBot:
             ax1.grid(True, alpha=0.3)
 
             # Plot volume
-            ax2.bar(df.index, df['Volume'], color=colors, alpha=0.5)
+            ax2.bar(range(len(df)), df['Volume'], color=colors, alpha=0.5)
             ax2.set_ylabel('Volume', fontsize=12)
             ax2.set_xlabel('Date', fontsize=12)
             ax2.grid(True, alpha=0.3)
 
-            # Format x-axis
-            if timeframe == '1d':
-                ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-                ax2.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-            else:
-                ax1.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d %H:%M'))
-                ax2.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d %H:%M'))
+            # Set x-axis labels to show dates
+            date_labels = [d.strftime('%Y-%m-%d' if timeframe == '1d' else '%m-%d %H:%M')
+                          for d in df.index]
+            # Show every Nth label to avoid crowding
+            step = max(len(df) // 10, 1)
+            tick_positions = list(range(0, len(df), step))
+            tick_labels = [date_labels[i] for i in tick_positions]
 
-            plt.setp(ax1.xaxis.get_majorticklabels(), rotation=45, ha='right')
-            plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45, ha='right')
+            ax1.set_xticks(tick_positions)
+            ax1.set_xticklabels(tick_labels, rotation=45, ha='right')
+            ax2.set_xticks(tick_positions)
+            ax2.set_xticklabels(tick_labels, rotation=45, ha='right')
 
             plt.tight_layout()
 
