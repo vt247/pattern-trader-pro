@@ -29,6 +29,14 @@
             font-size: 2.5em;
             margin-bottom: 10px;
         }
+        .header-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
         .status-badge {
             display: inline-block;
             padding: 5px 15px;
@@ -36,6 +44,37 @@
             border-radius: 20px;
             font-weight: bold;
             animation: pulse 2s infinite;
+        }
+        .status-badge.scanning {
+            background: #fbbf24;
+            animation: pulse 0.5s infinite;
+        }
+        .scan-button {
+            padding: 12px 30px;
+            background: white;
+            color: #667eea;
+            border: none;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .scan-button:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+        .scan-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .scan-info {
+            color: white;
+            font-size: 0.9em;
+            opacity: 0.9;
         }
         @keyframes pulse {
             0%, 100% { opacity: 1; }
@@ -176,7 +215,11 @@
     <div class="container">
         <div class="header">
             <h1>PatternTrader Pro</h1>
-            <span class="status-badge">● LIVE SCANNING</span>
+            <div class="header-actions">
+                <span class="status-badge" id="statusBadge">● LIVE SCANNING</span>
+                <button class="scan-button" id="scanButton" onclick="runScan()">🔍 Scan Now</button>
+                <span class="scan-info" id="scanInfo"></span>
+            </div>
         </div>
 
         <div class="stats-grid" id="stats">
@@ -215,6 +258,42 @@
     </div>
 
     <script>
+        function runScan() {
+            const button = document.getElementById('scanButton');
+            const statusBadge = document.getElementById('statusBadge');
+            const scanInfo = document.getElementById('scanInfo');
+
+            button.disabled = true;
+            button.textContent = '⏳ Scanning...';
+            statusBadge.className = 'status-badge scanning';
+            statusBadge.textContent = '● SCANNING';
+
+            fetch('/api/scan', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                scanInfo.textContent = 'Scan started! Check back in a moment...';
+                setTimeout(() => {
+                    scanInfo.textContent = '';
+                }, 5000);
+            })
+            .catch(error => {
+                console.error('Scan error:', error);
+                button.disabled = false;
+                button.textContent = '🔍 Scan Now';
+                statusBadge.className = 'status-badge';
+                statusBadge.textContent = '● LIVE SCANNING';
+                scanInfo.textContent = 'Scan failed!';
+                setTimeout(() => {
+                    scanInfo.textContent = '';
+                }, 3000);
+            });
+        }
+
         function formatMoney(value) {
             return '$' + value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         }
@@ -320,6 +399,21 @@
                     document.getElementById('totalr').textContent = formatR(data.stats.total_r);
                     document.getElementById('totalr').className = 'value ' +
                         (data.stats.total_r >= 0 ? 'positive' : 'negative');
+
+                    // Update scanner status
+                    const button = document.getElementById('scanButton');
+                    const statusBadge = document.getElementById('statusBadge');
+                    if (data.scanning) {
+                        button.disabled = true;
+                        button.textContent = '⏳ Scanning...';
+                        statusBadge.className = 'status-badge scanning';
+                        statusBadge.textContent = '● SCANNING';
+                    } else {
+                        button.disabled = false;
+                        button.textContent = '🔍 Scan Now';
+                        statusBadge.className = 'status-badge';
+                        statusBadge.textContent = '● LIVE SCANNING';
+                    }
 
                     // Update signals
                     const signalsDiv = document.getElementById('signals');

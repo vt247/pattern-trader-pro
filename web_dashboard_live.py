@@ -7,8 +7,17 @@ from flask import Flask, render_template, jsonify, send_from_directory
 import json
 import os
 from datetime import datetime
+import threading
+import time
 
 app = Flask(__name__)
+
+# Scanner state
+scanner_state = {
+    'scanning': False,
+    'last_scan': None,
+    'scan_count': 0
+}
 
 @app.route('/')
 def index():
@@ -57,6 +66,9 @@ def api_status():
 
     return jsonify({
         'status': 'live',
+        'scanning': scanner_state['scanning'],
+        'last_scan': scanner_state['last_scan'],
+        'scan_count': scanner_state['scan_count'],
         'account': {
             'balance': account['balance'],
             'equity': account.get('equity', account['balance']),
@@ -75,6 +87,31 @@ def api_status():
         },
         'signals': signals[:50]  # Latest 50 signals
     })
+
+@app.route('/api/scan', methods=['POST'])
+def trigger_scan():
+    """Manually trigger a scan"""
+    if scanner_state['scanning']:
+        return jsonify({'error': 'Scan already in progress'}), 400
+
+    # Run scan in background thread
+    def run_scan():
+        scanner_state['scanning'] = True
+        try:
+            from auto_scanner_bot import AutoScannerBot
+            bot = AutoScannerBot(initial_balance=1000.0)
+            bot.run_hourly_scan()
+            scanner_state['last_scan'] = datetime.now().isoformat()
+            scanner_state['scan_count'] += 1
+        except Exception as e:
+            print(f"Scan error: {e}")
+        finally:
+            scanner_state['scanning'] = False
+
+    thread = threading.Thread(target=run_scan, daemon=True)
+    thread.start()
+
+    return jsonify({'message': 'Scan started', 'scanning': True})
 
 @app.route('/charts/<path:filename>')
 def serve_chart(filename):
