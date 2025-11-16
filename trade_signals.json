@@ -1,21 +1,22 @@
 [
   {
-    "timestamp": "2025-11-16T12:19:01.100898",
+    "timestamp": "2025-11-16T12:58:16.037385",
     "pattern_type": "ICI",
     "market": "BTC-USD",
     "timeframe": "1d",
-    "entry": 96190.740796875,
-    "stop": 93973.9201171875,
-    "target": 103612.27089843749,
-    "risk_reward": 3.3478260869565126,
-    "chart_path": "charts/ICI_BTC-USD_1d_20251116_121901.html",
+    "entry": 96195.6918125,
+    "stop": 93978.75703125,
+    "target": 103617.60390624999,
+    "risk_reward": 3.3478260869565344,
+    "chart_path": "charts/ICI_BTC-USD_1d_20251116_125816.html",
     "status": "open",
     "exit_price": 0.0,
     "exit_date": "",
-    "pnl_r": 0.0
+    "pnl_r": 0.0,
+    "trade_rationale": "Institutional Candle with Imbalance detected. Large candle shows institutional activity, followed by price imbalance creating entry opportunity.. Counter-trend trade - expecting reversal."
   },
   {
-    "timestamp": "2025-11-16T12:19:01.100902",
+    "timestamp": "2025-11-16T12:58:16.037389",
     "pattern_type": "Momentum",
     "market": "SPY",
     "timeframe": "1h",
@@ -23,14 +24,15 @@
     "stop": 655.1512619018555,
     "target": 722.3462631225585,
     "risk_reward": 3.347826086956532,
-    "chart_path": "charts/Momentum_SPY_1h_20251116_121902.html",
+    "chart_path": "charts/Momentum_SPY_1h_20251116_125817.html",
     "status": "open",
     "exit_price": 0.0,
     "exit_date": "",
-    "pnl_r": 0.0
+    "pnl_r": 0.0,
+    "trade_rationale": "Strong momentum pattern identified. Price showing clear directional movement with potential for continuation after retracement.. Range-bound market - trading breakout from consolidation."
   },
   {
-    "timestamp": "2025-11-16T12:19:01.100904",
+    "timestamp": "2025-11-16T12:58:16.037391",
     "pattern_type": "Force",
     "market": "GLD",
     "timeframe": "1d",
@@ -38,10 +40,11 @@
     "stop": 366.56099166870115,
     "target": 404.156990814209,
     "risk_reward": 3.3478260869565264,
-    "chart_path": "charts/Force_GLD_1d_20251116_121902.html",
+    "chart_path": "charts/Force_GLD_1d_20251116_125817.html",
     "status": "open",
     "exit_price": 0.0,
     "exit_date": "",
-    "pnl_r": 0.0
+    "pnl_r": 0.0,
+    "trade_rationale": "Force pattern detected. Stop hunt followed by sharp reversal indicates institutional accumulation/distribution and potential trend change.. Trade aligns with uptrend (price above MA20 and MA50)."
   }
 ]

@@ -105,10 +105,10 @@ def generate_trade_rationale(pattern_type, is_long, trend, support_levels,
 
 
 def draw_interactive_chart(symbol: str, timeframe: str, setup: dict,
-                          pattern_type: str, charts_dir: str = 'static/charts') -> str:
+                          pattern_type: str, charts_dir: str = 'static/charts'):
     """
     Draw interactive Plotly chart with all setup details
-    Returns: path to saved HTML file
+    Returns: (chart_path, trade_rationale) tuple
     """
     try:
         # Get data
@@ -116,7 +116,7 @@ def draw_interactive_chart(symbol: str, timeframe: str, setup: dict,
         df = yf.download(symbol, period=period, interval=timeframe, progress=False)
 
         if df.empty:
-            return ''
+            return '', ''
 
         # Handle MultiIndex columns
         if isinstance(df.columns, pd.MultiIndex):
@@ -503,13 +503,13 @@ def draw_interactive_chart(symbol: str, timeframe: str, setup: dict,
             }
         })
 
-        return f'charts/{chart_filename}'
+        return f'charts/{chart_filename}', rationale
 
     except Exception as e:
         print(f"Error creating interactive chart: {e}")
         import traceback
         traceback.print_exc()
-        return ''
+        return '', ''
 
 
 if __name__ == '__main__':

@@ -41,6 +41,7 @@ class TradeSignal:
     exit_price: float = 0.0
     exit_date: str = ''
     pnl_r: float = 0.0
+    trade_rationale: str = ''
 
 class AutoScannerBot:
     """Automatic scanner that finds and trades setups"""
@@ -272,10 +273,10 @@ class AutoScannerBot:
                 setups = self.scan_market(symbol, timeframe)
 
                 for setup in setups:
-                    # Draw interactive chart (Plotly)
-                    chart_path = draw_interactive_chart(symbol, timeframe, setup,
-                                                        setup['pattern_type'],
-                                                        self.charts_dir)
+                    # Draw interactive chart (Plotly) and get trade rationale
+                    chart_path, trade_rationale = draw_interactive_chart(symbol, timeframe, setup,
+                                                                         setup['pattern_type'],
+                                                                         self.charts_dir)
 
                     # Create signal
                     signal = TradeSignal(
@@ -288,7 +289,8 @@ class AutoScannerBot:
                         target=setup['target'],
                         risk_reward=setup['risk_reward'],
                         chart_path=chart_path,
-                        status='open'
+                        status='open',
+                        trade_rationale=trade_rationale
                     )
 
                     new_signals.append(signal)

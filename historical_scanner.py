@@ -114,9 +114,9 @@ def create_dummy_signals(bot):
             'target': signal.target,
             'risk_reward': signal.risk_reward
         }
-        chart_path = draw_interactive_chart(signal.market, signal.timeframe,
-                                            setup, signal.pattern_type,
-                                            bot.charts_dir)
+        chart_path, trade_rationale = draw_interactive_chart(signal.market, signal.timeframe,
+                                                             setup, signal.pattern_type,
+                                                             bot.charts_dir)
 
         # Update signal with realistic prices from chart
         signal.entry = setup['entry']
@@ -124,6 +124,7 @@ def create_dummy_signals(bot):
         signal.target = setup['target']
         signal.risk_reward = setup['risk_reward']
         signal.chart_path = chart_path
+        signal.trade_rationale = trade_rationale
 
     # Save to file
     with open('trade_signals.json', 'w') as f:
