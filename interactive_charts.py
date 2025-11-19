@@ -10,6 +10,79 @@ from datetime import datetime, timedelta
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import os
+import requests
+
+
+def fetch_stock_data(symbol: str, period: str, interval: str):
+    """
+    Fetch stock data with fallback options.
+    First tries yfinance, then falls back to Alpha Vantage.
+    """
+    # Try yfinance first
+    try:
+        df = yf.download(symbol, period=period, interval=interval, progress=False)
+        if not df.empty:
+            # Handle MultiIndex columns
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.droplevel(1)
+            return df
+    except Exception as e:
+        print(f"yfinance failed: {e}")
+
+    # Fallback to Alpha Vantage (free tier)
+    try:
+        # Use demo key or get from environment
+        api_key = os.environ.get('ALPHA_VANTAGE_KEY', 'demo')
+
+        if interval in ['1h', '60m']:
+            function = 'TIME_SERIES_INTRADAY'
+            url = f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval=60min&outputsize=full&apikey={api_key}'
+        else:
+            function = 'TIME_SERIES_DAILY'
+            url = f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&outputsize=full&apikey={api_key}'
+
+        response = requests.get(url, timeout=10)
+        data = response.json()
+
+        # Parse Alpha Vantage response
+        if interval in ['1h', '60m']:
+            time_series_key = 'Time Series (60min)'
+        else:
+            time_series_key = 'Time Series (Daily)'
+
+        if time_series_key not in data:
+            print(f"Alpha Vantage error: {data.get('Note', data.get('Error Message', 'Unknown error'))}")
+            return pd.DataFrame()
+
+        time_series = data[time_series_key]
+
+        # Convert to DataFrame
+        records = []
+        for date_str, values in time_series.items():
+            records.append({
+                'Date': pd.to_datetime(date_str),
+                'Open': float(values['1. open']),
+                'High': float(values['2. high']),
+                'Low': float(values['3. low']),
+                'Close': float(values['4. close']),
+                'Volume': int(values['5. volume'])
+            })
+
+        df = pd.DataFrame(records)
+        df.set_index('Date', inplace=True)
+        df.sort_index(inplace=True)
+
+        # Filter based on period
+        if 'd' in period:
+            days = int(period.replace('d', ''))
+            start_date = datetime.now() - timedelta(days=days)
+            df = df[df.index >= start_date]
+
+        return df
+
+    except Exception as e:
+        print(f"Alpha Vantage failed: {e}")
+        return pd.DataFrame()
 
 
 def check_trade_outcome(df, entry, stop, target, trade_start_time):
@@ -583,14 +656,15 @@ def generate_live_chart(symbol: str, timeframe: str, entry: float, stop: float,
         else:
             period = '30d'
 
-        df = yf.download(symbol, period=period, interval=timeframe, progress=False)
+        # Use fetch_stock_data with fallback
+        df = fetch_stock_data(symbol, period, timeframe)
 
         if df.empty:
             return f'''
             <div style="padding: 40px; text-align: center; color: #ff6b6b; background: #2a2a2a; border-radius: 8px; margin: 20px;">
                 <h3>⚠️ Market Data Unavailable</h3>
                 <p>Unable to fetch data for {symbol}</p>
-                <p style="font-size: 0.9em; color: #888;">Yahoo Finance may be rate limiting requests. Please try again later.</p>
+                <p style="font-size: 0.9em; color: #888;">Data providers may be temporarily unavailable. Please try again later.</p>
                 <hr style="border-color: #444; margin: 20px 0;">
                 <p style="color: #ccc;">
                     <strong>Trade Details:</strong><br>
@@ -598,10 +672,6 @@ def generate_live_chart(symbol: str, timeframe: str, entry: float, stop: float,
                 </p>
             </div>
             '''
-
-        # Handle MultiIndex columns
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.droplevel(1)
 
         # Calculate indicators
         support_levels, resistance_levels = calculate_support_resistance(df)

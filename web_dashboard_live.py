@@ -13,8 +13,7 @@ import time
 app = Flask(__name__)
 
 # Import the live chart generator and trade outcome checker
-from interactive_charts import generate_live_chart, check_trade_outcome
-import yfinance as yf
+from interactive_charts import generate_live_chart, check_trade_outcome, fetch_stock_data
 import pandas as pd
 
 # Scanner state
@@ -217,8 +216,8 @@ def trade_status():
         else:
             period = '30d'
 
-        # Fetch data
-        df = yf.download(symbol, period=period, interval=timeframe, progress=False)
+        # Fetch data with fallback
+        df = fetch_stock_data(symbol, period, timeframe)
 
         if df.empty:
             return jsonify({
@@ -226,10 +225,6 @@ def trade_status():
                 'message': 'Unable to fetch market data',
                 'current_price': None
             })
-
-        # Handle MultiIndex columns
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.droplevel(1)
 
         # Check outcome
         outcome, hit_price, hit_time, _ = check_trade_outcome(

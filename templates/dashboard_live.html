@@ -449,7 +449,7 @@
 
                     ${signal.chart_path ? `
                     <div class="chart-container">
-                        <iframe src="/${signal.chart_path}" scrolling="no"></iframe>
+                        <iframe src="/api/live-chart?symbol=${encodeURIComponent(signal.market)}&timeframe=${signal.timeframe}&entry=${signal.entry}&stop=${signal.stop}&target=${signal.target}&pattern=${encodeURIComponent(signal.pattern_type)}&timestamp=${encodeURIComponent(signal.timestamp)}&rr=${signal.risk_reward}" scrolling="no"></iframe>
                     </div>
                     ` : ''}
 
