@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Trade Rationale</title>
+</head>
+<body style="background: #667eea; padding: 20px;">
+    <h1 style="color: white;">Testing Trade Rationale Display</h1>
+
+    <div id="test-signal"></div>
+
+    <script>
+        // Simulate a signal with trade_rationale
+        const signal = {
+            "timestamp": "2025-11-16T12:58:16.037385",
+            "pattern_type": "ICI",
+            "market": "BTC-USD",
+            "timeframe": "1d",
+            "entry": 96195.69,
+            "stop": 93978.76,
+            "target": 103617.60,
+            "risk_reward": 3.35,
+            "chart_path": "charts/ICI_BTC-USD_1d_20251116_125816.html",
+            "status": "open",
+            "trade_rationale": "Institutional Candle with Imbalance detected. Large candle shows institutional activity, followed by price imbalance creating entry opportunity. Counter-trend trade - expecting reversal."
+        };
+
+        // Render using same logic as dashboard
+        const html = `
+            <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                <h2>${signal.pattern_type} - ${signal.market}</h2>
+                <p>Entry: $${signal.entry.toFixed(2)}</p>
+
+                ${signal.chart_path ? `
+                <div style="margin: 20px 0;">
+                    <iframe src="/${signal.chart_path}" width="100%" height="800" scrolling="no"></iframe>
+                </div>
+                ` : ''}
+
+                ${signal.trade_rationale ? `
+                <div style="margin-top: 15px; padding: 15px; background: rgba(102,126,234,0.1); border-radius: 8px; border-left: 4px solid #667eea;">
+                    <div style="font-weight: bold; margin-bottom: 8px; color: #333;">📊 Trade Rationale:</div>
+                    <div style="color: #666; line-height: 1.6;">${signal.trade_rationale}</div>
+                </div>
+                ` : '<p style="color: red;">NO RATIONALE FOUND</p>'}
+            </div>
+        `;
+
+        document.getElementById('test-signal').innerHTML = html;
+
+        console.log('Signal object:', signal);
+        console.log('Has trade_rationale:', !!signal.trade_rationale);
+        console.log('Rationale:', signal.trade_rationale);
+    </script>
+</body>
+</html>

@@ -12,8 +12,10 @@ import time
 
 app = Flask(__name__)
 
-# Import the live chart generator
-from interactive_charts import generate_live_chart
+# Import the live chart generator and trade outcome checker
+from interactive_charts import generate_live_chart, check_trade_outcome
+import yfinance as yf
+import pandas as pd
 
 # Scanner state
 scanner_state = {
@@ -182,6 +184,88 @@ def live_chart():
     </body>
     </html>
     '''
+
+
+@app.route('/api/trade-status')
+def trade_status():
+    """Check current trade status (open/sl_hit/tp_hit) using live data"""
+    symbol = request.args.get('symbol', '')
+    timeframe = request.args.get('timeframe', '1d')
+    entry = float(request.args.get('entry', 0))
+    stop = float(request.args.get('stop', 0))
+    target = float(request.args.get('target', 0))
+    timestamp = request.args.get('timestamp', '')
+    risk_reward = float(request.args.get('rr', 3.0))
+
+    if not symbol or entry == 0:
+        return jsonify({'error': 'Invalid parameters'}), 400
+
+    try:
+        # Parse trade start time
+        trade_start_time = pd.to_datetime(timestamp) if timestamp else None
+
+        # Calculate period
+        if trade_start_time:
+            days_since_trade = (datetime.now() - trade_start_time.to_pydatetime().replace(tzinfo=None)).days
+        else:
+            days_since_trade = 7
+
+        if timeframe == '1d':
+            period = f'{max(30 + days_since_trade, 60)}d'
+        elif timeframe == '1h':
+            period = f'{max(7 + days_since_trade, 14)}d'
+        else:
+            period = '30d'
+
+        # Fetch data
+        df = yf.download(symbol, period=period, interval=timeframe, progress=False)
+
+        if df.empty:
+            return jsonify({
+                'status': 'unknown',
+                'message': 'Unable to fetch market data',
+                'current_price': None
+            })
+
+        # Handle MultiIndex columns
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.droplevel(1)
+
+        # Check outcome
+        outcome, hit_price, hit_time, _ = check_trade_outcome(
+            df, entry, stop, target, trade_start_time
+        )
+
+        current_price = float(df['Close'].iloc[-1])
+        is_long = target > entry
+
+        # Calculate unrealized P&L
+        if is_long:
+            unrealized_r = (current_price - entry) / abs(entry - stop)
+        else:
+            unrealized_r = (entry - current_price) / abs(entry - stop)
+
+        # Determine P&L based on outcome
+        if outcome == 'tp_hit':
+            pnl_r = risk_reward
+        elif outcome == 'sl_hit':
+            pnl_r = -1.0
+        else:
+            pnl_r = unrealized_r
+
+        return jsonify({
+            'status': outcome,
+            'current_price': current_price,
+            'pnl_r': round(pnl_r, 2),
+            'hit_time': hit_time.isoformat() if hit_time else None
+        })
+
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'current_price': None
+        })
 
 
 if __name__ == '__main__':

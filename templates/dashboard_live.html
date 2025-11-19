@@ -447,9 +447,44 @@
                         </div>
                     </div>
 
-                    <div class="chart-container">
-                        <iframe src="/api/live-chart?symbol=${encodeURIComponent(signal.market)}&timeframe=${signal.timeframe}&entry=${signal.entry}&stop=${signal.stop}&target=${signal.target}&pattern=${encodeURIComponent(signal.pattern_type)}&timestamp=${encodeURIComponent(signal.timestamp)}&rr=${signal.risk_reward}" scrolling="no"></iframe>
+                    ${signal.chart_path ? `
+                    <div class="chart-container" style="position: relative;">
+                        <iframe src="/${signal.chart_path}" scrolling="no"></iframe>
+                        <div id="status-${signal.timestamp.replace(/[:.]/g, '-')}" class="trade-status-overlay" style="position: absolute; top: 10px; right: 10px; padding: 8px 12px; border-radius: 6px; font-weight: bold; font-size: 14px; z-index: 100; background: rgba(100,100,100,0.9); color: #fff;">
+                            Loading...
+                        </div>
                     </div>
+                    <script>
+                        (function() {
+                            const statusId = 'status-${signal.timestamp.replace(/[:.]/g, '-')}';
+                            fetch('/api/trade-status?symbol=${encodeURIComponent(signal.market)}&timeframe=${signal.timeframe}&entry=${signal.entry}&stop=${signal.stop}&target=${signal.target}&timestamp=${encodeURIComponent(signal.timestamp)}&rr=${signal.risk_reward}')
+                                .then(r => r.json())
+                                .then(data => {
+                                    const el = document.getElementById(statusId);
+                                    if (data.status === 'tp_hit') {
+                                        el.innerHTML = '✓ TP HIT (+' + data.pnl_r + 'R)';
+                                        el.style.background = 'rgba(0, 255, 0, 0.9)';
+                                        el.style.color = '#000';
+                                    } else if (data.status === 'sl_hit') {
+                                        el.innerHTML = '✗ SL HIT (-1R)';
+                                        el.style.background = 'rgba(255, 0, 0, 0.9)';
+                                        el.style.color = '#fff';
+                                    } else if (data.status === 'open') {
+                                        const pnlColor = data.pnl_r >= 0 ? '#0f0' : '#f00';
+                                        el.innerHTML = 'OPEN: $' + data.current_price.toFixed(2) + ' <span style="color:' + pnlColor + '">(' + (data.pnl_r >= 0 ? '+' : '') + data.pnl_r + 'R)</span>';
+                                        el.style.background = 'rgba(0, 200, 255, 0.9)';
+                                        el.style.color = '#000';
+                                    } else {
+                                        el.innerHTML = 'Status Unknown';
+                                        el.style.background = 'rgba(100, 100, 100, 0.9)';
+                                    }
+                                })
+                                .catch(() => {
+                                    document.getElementById(statusId).innerHTML = 'Status Unknown';
+                                });
+                        })();
+                    </script>
+                    ` : ''}
 
                     ${signal.trade_rationale ? `
                     <div style="margin-top: 15px; padding: 15px; background: rgba(102,126,234,0.05); border-radius: 8px; border-left: 4px solid #667eea;">
