@@ -447,14 +447,9 @@
                         </div>
                     </div>
 
-                    ${signal.chart_path ? `
                     <div class="chart-container">
-                        ${signal.chart_path.endsWith('.html') ?
-                            `<iframe src="/${signal.chart_path}" scrolling="no"></iframe>` :
-                            `<img src="/${signal.chart_path}" alt="Setup Chart">`
-                        }
+                        <iframe src="/api/live-chart?symbol=${encodeURIComponent(signal.market)}&timeframe=${signal.timeframe}&entry=${signal.entry}&stop=${signal.stop}&target=${signal.target}&pattern=${encodeURIComponent(signal.pattern_type)}&timestamp=${encodeURIComponent(signal.timestamp)}&rr=${signal.risk_reward}" scrolling="no"></iframe>
                     </div>
-                    ` : ''}
 
                     ${signal.trade_rationale ? `
                     <div style="margin-top: 15px; padding: 15px; background: rgba(102,126,234,0.05); border-radius: 8px; border-left: 4px solid #667eea;">

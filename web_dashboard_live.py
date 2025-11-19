@@ -3,7 +3,7 @@ Live Trading Dashboard
 Shows all trade signals with charts and results
 """
 
-from flask import Flask, render_template, jsonify, send_from_directory
+from flask import Flask, render_template, jsonify, send_from_directory, request
 import json
 import os
 from datetime import datetime
@@ -11,6 +11,9 @@ import threading
 import time
 
 app = Flask(__name__)
+
+# Import the live chart generator
+from interactive_charts import generate_live_chart
 
 # Scanner state
 scanner_state = {
@@ -129,6 +132,57 @@ def analyze_trades():
 def serve_chart(filename):
     """Serve chart images"""
     return send_from_directory('static/charts', filename)
+
+
+@app.route('/api/live-chart')
+def live_chart():
+    """Generate a live chart with current market data"""
+    # Get parameters from query string
+    symbol = request.args.get('symbol', '')
+    timeframe = request.args.get('timeframe', '1d')
+    entry = float(request.args.get('entry', 0))
+    stop = float(request.args.get('stop', 0))
+    target = float(request.args.get('target', 0))
+    pattern_type = request.args.get('pattern', 'Unknown')
+    timestamp = request.args.get('timestamp', '')
+    risk_reward = float(request.args.get('rr', 3.0))
+
+    if not symbol or entry == 0:
+        return '<p>Invalid parameters</p>', 400
+
+    # Generate the live chart HTML
+    chart_html = generate_live_chart(
+        symbol=symbol,
+        timeframe=timeframe,
+        entry=entry,
+        stop=stop,
+        target=target,
+        pattern_type=pattern_type,
+        trade_timestamp=timestamp,
+        risk_reward=risk_reward
+    )
+
+    # Return full HTML page with the chart
+    return f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>{pattern_type} - {symbol} Live Chart</title>
+        <style>
+            body {{
+                margin: 0;
+                padding: 0;
+                background: #1a1a1a;
+                overflow: hidden;
+            }}
+        </style>
+    </head>
+    <body>
+        {chart_html}
+    </body>
+    </html>
+    '''
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

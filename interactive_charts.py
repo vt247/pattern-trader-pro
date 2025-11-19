@@ -6,10 +6,51 @@ Creates zoomable, draggable TradingView-style charts with pattern annotations
 import yfinance as yf
 import pandas as pd
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import os
+
+
+def check_trade_outcome(df, entry, stop, target, trade_start_time):
+    """
+    Check if SL or TP was hit after trade start
+    Returns: (outcome, hit_price, hit_time, hit_index)
+    outcome: 'sl_hit', 'tp_hit', 'open', or None
+    """
+    is_long = target > entry
+
+    # Get data after trade start
+    if trade_start_time:
+        try:
+            # Find the index of trade start or first index after it
+            mask = df.index >= trade_start_time
+            if not mask.any():
+                return 'open', None, None, None
+            post_trade_df = df[mask]
+        except:
+            post_trade_df = df
+    else:
+        post_trade_df = df
+
+    if post_trade_df.empty:
+        return 'open', None, None, None
+
+    for idx, row in post_trade_df.iterrows():
+        if is_long:
+            # Long trade: check if low hit stop or high hit target
+            if row['Low'] <= stop:
+                return 'sl_hit', stop, idx, df.index.get_loc(idx)
+            if row['High'] >= target:
+                return 'tp_hit', target, idx, df.index.get_loc(idx)
+        else:
+            # Short trade: check if high hit stop or low hit target
+            if row['High'] >= stop:
+                return 'sl_hit', stop, idx, df.index.get_loc(idx)
+            if row['Low'] <= target:
+                return 'tp_hit', target, idx, df.index.get_loc(idx)
+
+    return 'open', None, None, None
 
 
 def calculate_support_resistance(df, lookback=20):
@@ -510,6 +551,374 @@ def draw_interactive_chart(symbol: str, timeframe: str, setup: dict,
         import traceback
         traceback.print_exc()
         return '', ''
+
+
+def generate_live_chart(symbol: str, timeframe: str, entry: float, stop: float,
+                        target: float, pattern_type: str, trade_timestamp: str,
+                        risk_reward: float = 3.0):
+    """
+    Generate a live chart with current data, showing trade progress and outcome
+    Returns: HTML string for the chart
+    """
+    try:
+        # Parse trade start time
+        try:
+            trade_start_time = pd.to_datetime(trade_timestamp)
+        except:
+            trade_start_time = None
+
+        # Calculate how many days since trade started
+        if trade_start_time:
+            days_since_trade = (datetime.now() - trade_start_time.to_pydatetime().replace(tzinfo=None)).days
+        else:
+            days_since_trade = 7
+
+        # Get enough data to show context before trade and all data after
+        if timeframe == '1d':
+            # Get 30 days before trade + all days after
+            period = f'{max(30 + days_since_trade, 60)}d'
+        elif timeframe == '1h':
+            # For hourly, get enough hours
+            period = f'{max(7 + days_since_trade, 14)}d'
+        else:
+            period = '30d'
+
+        df = yf.download(symbol, period=period, interval=timeframe, progress=False)
+
+        if df.empty:
+            return '<p>No data available</p>'
+
+        # Handle MultiIndex columns
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.droplevel(1)
+
+        # Calculate indicators
+        support_levels, resistance_levels = calculate_support_resistance(df)
+        trend, trend_color, df = calculate_trend(df)
+
+        # Check trade outcome
+        outcome, hit_price, hit_time, hit_index = check_trade_outcome(
+            df, entry, stop, target, trade_start_time
+        )
+
+        is_long = target > entry
+
+        # Create subplot with price and volume
+        fig = make_subplots(
+            rows=2, cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.03,
+            row_heights=[0.7, 0.3],
+            subplot_titles=(f'{pattern_type} - {symbol} ({timeframe}) - LIVE', 'Volume')
+        )
+
+        # Add candlestick chart
+        fig.add_trace(
+            go.Candlestick(
+                x=df.index,
+                open=df['Open'],
+                high=df['High'],
+                low=df['Low'],
+                close=df['Close'],
+                name='Price',
+                increasing_line_color='green',
+                decreasing_line_color='red'
+            ),
+            row=1, col=1
+        )
+
+        # Add Moving Averages
+        fig.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df['MA20'],
+                name='MA20',
+                line=dict(color='blue', width=1),
+                opacity=0.7
+            ),
+            row=1, col=1
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df['MA50'],
+                name='MA50',
+                line=dict(color='purple', width=1),
+                opacity=0.7
+            ),
+            row=1, col=1
+        )
+
+        # Get y-axis range
+        y_min = df['Low'].min()
+        y_max = df['High'].max()
+
+        # Add vertical line at trade start
+        if trade_start_time:
+            fig.add_shape(
+                type="line",
+                x0=trade_start_time,
+                x1=trade_start_time,
+                y0=y_min,
+                y1=y_max,
+                line=dict(
+                    color="rgba(255, 255, 0, 0.7)",
+                    width=2,
+                    dash="dot"
+                ),
+                row=1, col=1
+            )
+
+            fig.add_annotation(
+                x=trade_start_time,
+                y=y_max,
+                text="Trade Start",
+                showarrow=False,
+                font=dict(size=10, color="yellow"),
+                xshift=5,
+                yshift=10,
+                row=1, col=1
+            )
+
+        # Add Entry line
+        fig.add_hline(
+            y=entry,
+            line_dash="solid",
+            line_color="white",
+            line_width=3,
+            annotation_text=f"<b>Entry: ${entry:.2f}</b>",
+            annotation_position="right",
+            annotation_font=dict(size=12, color="white", family="Arial Black"),
+            row=1, col=1
+        )
+
+        # Add Stop Loss line
+        fig.add_hline(
+            y=stop,
+            line_dash="dash",
+            line_color="red",
+            line_width=2,
+            annotation_text=f"Stop Loss: ${stop:.2f}",
+            annotation_position="right",
+            annotation_font=dict(size=11, color="red"),
+            row=1, col=1
+        )
+
+        # Add Take Profit line
+        fig.add_hline(
+            y=target,
+            line_dash="dash",
+            line_color="green",
+            line_width=2,
+            annotation_text=f"Take Profit: ${target:.2f}",
+            annotation_position="right",
+            annotation_font=dict(size=11, color="green"),
+            row=1, col=1
+        )
+
+        # Add outcome marker if trade closed
+        if outcome == 'tp_hit' and hit_time is not None:
+            fig.add_trace(
+                go.Scatter(
+                    x=[hit_time],
+                    y=[target],
+                    mode='markers',
+                    marker=dict(
+                        symbol='star',
+                        size=20,
+                        color='lime',
+                        line=dict(width=2, color='white')
+                    ),
+                    name='TP HIT ✓',
+                    showlegend=True
+                ),
+                row=1, col=1
+            )
+
+            fig.add_annotation(
+                x=hit_time,
+                y=target,
+                text="<b>✓ TP HIT!</b>",
+                showarrow=True,
+                arrowhead=2,
+                arrowcolor='lime',
+                font=dict(size=14, color="lime"),
+                bgcolor="rgba(0, 255, 0, 0.3)",
+                bordercolor="lime",
+                yshift=30,
+                row=1, col=1
+            )
+
+        elif outcome == 'sl_hit' and hit_time is not None:
+            fig.add_trace(
+                go.Scatter(
+                    x=[hit_time],
+                    y=[stop],
+                    mode='markers',
+                    marker=dict(
+                        symbol='x',
+                        size=20,
+                        color='red',
+                        line=dict(width=2, color='white')
+                    ),
+                    name='SL HIT ✗',
+                    showlegend=True
+                ),
+                row=1, col=1
+            )
+
+            fig.add_annotation(
+                x=hit_time,
+                y=stop,
+                text="<b>✗ SL HIT</b>",
+                showarrow=True,
+                arrowhead=2,
+                arrowcolor='red',
+                font=dict(size=14, color="red"),
+                bgcolor="rgba(255, 0, 0, 0.3)",
+                bordercolor="red",
+                yshift=-30,
+                row=1, col=1
+            )
+
+        # Add Volume bars
+        colors = ['green' if row['Close'] >= row['Open'] else 'red'
+                 for _, row in df.iterrows()]
+
+        fig.add_trace(
+            go.Bar(
+                x=df.index,
+                y=df['Volume'],
+                name='Volume',
+                marker_color=colors,
+                opacity=0.5
+            ),
+            row=2, col=1
+        )
+
+        # Determine outcome text and color
+        current_price = df['Close'].iloc[-1]
+        if outcome == 'tp_hit':
+            outcome_text = f"<b>✓ WINNER</b> - TP Hit at ${target:.2f}"
+            outcome_color = 'lime'
+            pnl_r = risk_reward
+        elif outcome == 'sl_hit':
+            outcome_text = f"<b>✗ LOSER</b> - SL Hit at ${stop:.2f}"
+            outcome_color = 'red'
+            pnl_r = -1.0
+        else:
+            # Calculate unrealized P&L
+            if is_long:
+                unrealized = (current_price - entry) / abs(entry - stop)
+            else:
+                unrealized = (entry - current_price) / abs(entry - stop)
+            outcome_text = f"<b>OPEN</b> - Current: ${current_price:.2f} ({unrealized:+.2f}R)"
+            outcome_color = 'cyan'
+            pnl_r = unrealized
+
+        # Add pattern info annotation
+        direction = "LONG ↗" if is_long else "SHORT ↘"
+        risk = abs(entry - stop)
+        reward = abs(target - entry)
+
+        info_text = (
+            f"<b>{pattern_type} Pattern</b><br>"
+            f"Direction: {direction}<br>"
+            f"Trend: {trend}<br>"
+            f"Entry: ${entry:.2f}<br>"
+            f"Stop Loss: ${stop:.2f}<br>"
+            f"Take Profit: ${target:.2f}<br>"
+            f"R:R = 1:{risk_reward:.1f}<br>"
+            f"<br>"
+            f"<span style='color:{outcome_color}'>{outcome_text}</span>"
+        )
+
+        fig.add_annotation(
+            x=0.02,
+            y=0.98,
+            xref="paper",
+            yref="paper",
+            text=info_text,
+            showarrow=False,
+            bgcolor="rgba(30, 30, 30, 0.9)",
+            bordercolor=outcome_color,
+            borderwidth=2,
+            font=dict(size=11, color="white"),
+            align="left",
+            xanchor="left",
+            yanchor="top"
+        )
+
+        # Update layout
+        fig.update_layout(
+            title=dict(
+                text=f"{pattern_type} - {symbol} ({timeframe}) - {'LONG ↗' if is_long else 'SHORT ↘'} - <span style='color:{outcome_color}'>{outcome.upper().replace('_', ' ')}</span>",
+                x=0.5,
+                xanchor='center',
+                font=dict(size=18, color='white')
+            ),
+            height=700,
+            template='plotly_dark',
+            xaxis_rangeslider_visible=False,
+            hovermode='x unified',
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            ),
+            margin=dict(l=50, r=150, t=80, b=50),
+            dragmode='pan',
+            modebar=dict(
+                bgcolor='rgba(0,0,0,0)',
+                color='white',
+                activecolor='lightblue'
+            )
+        )
+
+        # Update axes
+        fig.update_xaxes(fixedrange=False, rangeslider_visible=False)
+        fig.update_yaxes(fixedrange=False)
+
+        fig.update_xaxes(
+            title_text="Date",
+            row=2, col=1,
+            gridcolor='rgba(128, 128, 128, 0.2)',
+            showgrid=True
+        )
+
+        fig.update_yaxes(
+            title_text="Price ($)",
+            row=1, col=1,
+            gridcolor='rgba(128, 128, 128, 0.2)',
+            showgrid=True
+        )
+
+        fig.update_yaxes(
+            title_text="Volume",
+            row=2, col=1,
+            gridcolor='rgba(128, 128, 128, 0.2)',
+            showgrid=True
+        )
+
+        # Return HTML string
+        return fig.to_html(
+            full_html=False,
+            include_plotlyjs='cdn',
+            config={
+                'displayModeBar': True,
+                'displaylogo': False,
+                'scrollZoom': True,
+                'modeBarButtonsToRemove': ['lasso2d', 'select2d', 'autoScale2d']
+            }
+        )
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return f'<p>Error generating chart: {e}</p>'
 
 
 if __name__ == '__main__':
