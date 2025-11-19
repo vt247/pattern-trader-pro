@@ -34,7 +34,16 @@ def fetch_stock_data(symbol: str, period: str, interval: str):
         # Use demo key or get from environment
         api_key = os.environ.get('ALPHA_VANTAGE_KEY', 'demo')
 
-        if interval in ['1h', '60m']:
+        # Check if it's a crypto symbol (contains -USD, -EUR, etc.)
+        is_crypto = '-' in symbol and any(currency in symbol for currency in ['USD', 'EUR', 'GBP', 'JPY'])
+
+        if is_crypto:
+            # Extract crypto symbol (e.g., BTC from BTC-USD)
+            crypto_symbol = symbol.split('-')[0]
+            market = symbol.split('-')[1] if len(symbol.split('-')) > 1 else 'USD'
+            function = 'DIGITAL_CURRENCY_DAILY'
+            url = f'https://www.alphavantage.co/query?function={function}&symbol={crypto_symbol}&market={market}&apikey={api_key}'
+        elif interval in ['1h', '60m']:
             function = 'TIME_SERIES_INTRADAY'
             url = f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval=60min&outputsize=full&apikey={api_key}'
         else:
@@ -44,8 +53,10 @@ def fetch_stock_data(symbol: str, period: str, interval: str):
         response = requests.get(url, timeout=10)
         data = response.json()
 
-        # Parse Alpha Vantage response
-        if interval in ['1h', '60m']:
+        # Parse Alpha Vantage response based on type
+        if is_crypto:
+            time_series_key = 'Time Series (Digital Currency Daily)'
+        elif interval in ['1h', '60m']:
             time_series_key = 'Time Series (60min)'
         else:
             time_series_key = 'Time Series (Daily)'
@@ -59,14 +70,25 @@ def fetch_stock_data(symbol: str, period: str, interval: str):
         # Convert to DataFrame
         records = []
         for date_str, values in time_series.items():
-            records.append({
-                'Date': pd.to_datetime(date_str),
-                'Open': float(values['1. open']),
-                'High': float(values['2. high']),
-                'Low': float(values['3. low']),
-                'Close': float(values['4. close']),
-                'Volume': int(values['5. volume'])
-            })
+            if is_crypto:
+                # Crypto uses different field names
+                records.append({
+                    'Date': pd.to_datetime(date_str),
+                    'Open': float(values['1a. open (USD)']),
+                    'High': float(values['2a. high (USD)']),
+                    'Low': float(values['3a. low (USD)']),
+                    'Close': float(values['4a. close (USD)']),
+                    'Volume': float(values.get('5. volume', 0))
+                })
+            else:
+                records.append({
+                    'Date': pd.to_datetime(date_str),
+                    'Open': float(values['1. open']),
+                    'High': float(values['2. high']),
+                    'Low': float(values['3. low']),
+                    'Close': float(values['4. close']),
+                    'Volume': int(values['5. volume'])
+                })
 
         df = pd.DataFrame(records)
         df.set_index('Date', inplace=True)
