@@ -586,7 +586,18 @@ def generate_live_chart(symbol: str, timeframe: str, entry: float, stop: float,
         df = yf.download(symbol, period=period, interval=timeframe, progress=False)
 
         if df.empty:
-            return '<p>No data available</p>'
+            return f'''
+            <div style="padding: 40px; text-align: center; color: #ff6b6b; background: #2a2a2a; border-radius: 8px; margin: 20px;">
+                <h3>⚠️ Market Data Unavailable</h3>
+                <p>Unable to fetch data for {symbol}</p>
+                <p style="font-size: 0.9em; color: #888;">Yahoo Finance may be rate limiting requests. Please try again later.</p>
+                <hr style="border-color: #444; margin: 20px 0;">
+                <p style="color: #ccc;">
+                    <strong>Trade Details:</strong><br>
+                    Entry: ${entry:.2f} | Stop: ${stop:.2f} | Target: ${target:.2f}
+                </p>
+            </div>
+            '''
 
         # Handle MultiIndex columns
         if isinstance(df.columns, pd.MultiIndex):
